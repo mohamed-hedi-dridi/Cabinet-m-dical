@@ -23,6 +23,7 @@
 | 12 | Dashboard complet (statistiques, derniers éléments) | ✅ | Terminé |
 | 13 | Tests (auth, permissions, CRUD, RLS, validation, responsive) | ✅ | Vérification manuelle (voir détail) |
 | 14 | Finalisation (lint, README, déploiement Vercel) | ✅ | Terminé |
+| 15 | Utilisateurs (CRUD comptes, rôles, activation/désactivation) | ✅ | Terminé |
 
 ## Détail par module
 
@@ -157,14 +158,32 @@
 - `README.md` réécrit : présentation du projet, stack, installation, application des migrations Supabase, création du premier compte ADMIN (manuelle, en attendant le module Utilisateurs), rôles/permissions, notes de déploiement Vercel, structure du projet
 - `npm run build` et `npm run lint` : OK sur l'ensemble du projet (dernière vérification avant test complet par l'utilisateur)
 
-### ⬜ Modules non démarrés
-Utilisateurs (gestion admin).
+### ✅ Utilisateurs (`/users`)
+- Réservé ADMIN (nav + `requireRole(["ADMIN"])`) ; RLS `profiles` déjà en place (select own/admin, write admin uniquement) depuis la migration initiale
+- ✅ Liste des comptes (nom, email, rôle, statut actif/inactif) — [app/(dashboard)/users/page.tsx](app/(dashboard)/users/page.tsx)
+- ✅ Création via Dialog — `components/users/user-dialog.tsx`, `user-form.tsx` (nom complet, email, mot de passe, rôle) : utilise l'API admin Supabase Auth (`auth.admin.createUser` avec `email_confirm: true`) pour créer le compte déjà confirmé sans déconnecter l'admin ni dépendre de l'envoi d'email de confirmation (peu fiable en développement, cf. session précédente) ; le profil `public.profiles` est créé automatiquement par le trigger `handle_new_user` à partir des `user_metadata` (`full_name`, `role`)
+- ✅ Modification via Dialog — nom complet et rôle uniquement (email/mot de passe non modifiables depuis ce formulaire) ; un admin ne peut pas changer son propre rôle
+- ✅ Activation/désactivation — `components/users/toggle-user-active-switch.tsx` (switch inline dans la liste, met à jour `profiles.is_active`, lu par `auth_role()` dans les policies RLS) ; un admin ne peut pas désactiver son propre compte
+- ✅ Réinitialisation de mot de passe — `components/users/reset-password-dialog.tsx` (admin uniquement, via `auth.admin.updateUserById`, contourne l'email de récupération)
+- ✅ Suppression avec confirmation — `components/users/delete-user-button.tsx` (via `auth.admin.deleteUser`, cascade sur `profiles` puis `doctors` si applicable) ; un admin ne peut pas se supprimer lui-même ; gestion de l'erreur si le compte est référencé par des rendez-vous/consultations (contrainte FK `on delete restrict` via `doctors`)
+- Nouveau : `lib/supabase/admin.ts` — client Supabase avec la clé secrète (`SUPABASE_SECRET_KEY`, jamais exposée au client), nécessaire car ces opérations (créer/supprimer un compte auth, réinitialiser un mot de passe) bypassent RLS et ne sont pas possibles avec la clé publique ; les server actions vérifient explicitement `requireRole(["ADMIN"])` avant tout appel (RLS ne protège pas ce client admin)
+- Validation Zod — `schemas/user.schema.ts` (`createUserSchema`, `updateUserSchema`, `resetPasswordSchema`)
+- Service de lecture — `lib/services/users.service.ts` (`listUsers`, `getUserById`)
+- Server actions — `app/(dashboard)/users/actions.ts` (`createUser`, `updateUser`, `toggleUserActive`, `resetUserPassword`, `deleteUser`)
+- `npm run build` et `npm run lint` : OK ; test UI (création/modification/désactivation/suppression) à faire par l'utilisateur en conditions réelles (pas d'outil de navigateur automatisé disponible dans cet environnement pour le vérifier visuellement)
+
+### ✅ Pages d'erreur (403 / 404 / 500)
+- `next.config.ts` : activation de l'option expérimentale `authInterrupts` (nécessaire pour utiliser `forbidden()` de `next/navigation`)
+- `app/not-found.tsx` (404), `app/forbidden.tsx` (403), `app/error.tsx` (erreurs non gérées, ex. 500) et `app/(dashboard)/error.tsx` (même chose mais conserve la sidebar/header visibles pour les erreurs survenant dans une page du dashboard) — composant partagé `components/errors/error-page.tsx` (icône + code + titre + description + bouton "Retour au dashboard")
+- `lib/services/auth.service.ts#requireRole` : appelle désormais `forbidden()` (page 403) au lieu de rediriger silencieusement vers `/dashboard` quand le rôle ne correspond pas ; conserve la redirection vers `/login` si l'utilisateur n'est pas authentifié (cas normal, pas une erreur)
+- Les erreurs `400` (validation de formulaire) restent gérées en ligne dans chaque formulaire (React Hook Form + Zod + message d'erreur serveur), conformément au pattern déjà utilisé dans tous les modules — une page pleine écran n'est pas adaptée à une erreur de saisie
+- `npm run build` et `npm run lint` : OK ; vérification visuelle (404 sur une URL inconnue, 403 en visitant une page réservée avec un rôle non autorisé) à faire par l'utilisateur en conditions réelles
 
 ## Dette technique / points d'attention connus
 - `types/database.types.ts` est écrit à la main (pas encore généré via `supabase gen types typescript`) — nécessite les clés `Relationships`/`Views`/`Functions` pour que `.insert()`/`.update()` typent correctement avec `@supabase/supabase-js`
 - Pas encore de tests automatisés (aucun framework de test installé ; vérification faite manuellement, voir section "Vérification globale" ci-dessous)
 - Liste des patients sans pagination
-- Aucun moyen de créer un profil avec le rôle `DOCTOR` tant que le module Utilisateurs n'est pas développé (le module Médecins ne fait qu'associer une fiche médecin à un profil `DOCTOR` déjà existant) — à créer manuellement via Supabase en attendant
+- `SUPABASE_SECRET_KEY` doit être renseignée dans `.env.local` (et dans les variables d'environnement Vercel en production) pour que le module Utilisateurs fonctionne — voir `.env.local.example`
 
 ## Journal des sessions
 
@@ -197,3 +216,11 @@ Utilisateurs (gestion admin).
 - Finalisation effectuée (étape 14) : `README.md` réécrit (installation, migrations Supabase, création du premier ADMIN, rôles/permissions, déploiement Vercel, structure du projet)
   - `npm run build` et `npm run lint` : OK
 - **Toutes les étapes de la roadmap (1 à 14) sont terminées.** Le projet est prêt pour un test complet de bout en bout par l'utilisateur.
+- Découverte en test utilisateur : les migrations SQL n'avaient jamais été appliquées au projet Supabase réel (table `profiles` par défaut du template Supabase, sans les colonnes `role`/`is_active` attendues) — corrigé en nettoyant l'existant et en rejouant les 3 migrations via le SQL Editor du dashboard, puis création manuelle du premier compte ADMIN (`mohamedhedidridi9@gmail.com`)
+- Module Utilisateurs développé et terminé (étape 15, non prévue dans la roadmap initiale car dépendait de comptes réels pour être testée) : CRUD complet des comptes (création, modification nom/rôle, activation/désactivation, réinitialisation de mot de passe, suppression), réservé ADMIN
+  - Ajout de `SUPABASE_SECRET_KEY` (clé secrète Supabase) dans `.env.local` et `lib/supabase/admin.ts` : nécessaire pour créer/supprimer des comptes Auth et réinitialiser un mot de passe sans passer par l'email de confirmation (peu fiable en développement) ni déconnecter l'admin courant
+  - `npm run build` et `npm run lint` : OK
+
+### 2026-09-07
+- Pages d'erreur 403/404/500 ajoutées (voir détail ci-dessus) : `app/not-found.tsx`, `app/forbidden.tsx`, `app/error.tsx`, `app/(dashboard)/error.tsx`, composant partagé `components/errors/error-page.tsx`, activation de `authInterrupts` dans `next.config.ts`, `requireRole()` utilise désormais `forbidden()` au lieu d'une redirection silencieuse
+  - `npm run build` et `npm run lint` : OK

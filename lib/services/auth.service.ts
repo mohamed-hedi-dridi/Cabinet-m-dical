@@ -1,6 +1,6 @@
 import "server-only"
 
-import { redirect } from "next/navigation"
+import { forbidden, redirect } from "next/navigation"
 
 import { createClient } from "@/lib/supabase/server"
 import type { Profile, UserRole } from "@/types"
@@ -34,10 +34,11 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
 }
 
 /**
- * Protège une page réservée à certains rôles. Renvoie l'utilisateur courant
- * si son rôle est autorisé, sinon redirige vers le dashboard. L'authentification
- * elle-même est déjà garantie par `app/(dashboard)/layout.tsx` ; ce garde ne
- * fait que compléter le filtrage de la navigation par un contrôle côté route.
+ * Protège une page ou une server action réservée à certains rôles. Renvoie
+ * l'utilisateur courant si son rôle est autorisé, sinon affiche la page 403
+ * (`app/forbidden.tsx`). L'authentification elle-même est déjà garantie par
+ * `app/(dashboard)/layout.tsx` (redirection vers /login) ; ce garde ne fait
+ * que compléter le filtrage de la navigation par un contrôle côté route.
  * La sécurité réelle reste assurée par les policies RLS de chaque table.
  */
 export async function requireRole(
@@ -45,8 +46,12 @@ export async function requireRole(
 ): Promise<CurrentUser> {
   const user = await getCurrentUser()
 
-  if (!user?.profile || !allowedRoles.includes(user.profile.role)) {
-    redirect("/dashboard")
+  if (!user) {
+    redirect("/login")
+  }
+
+  if (!user.profile || !allowedRoles.includes(user.profile.role)) {
+    forbidden()
   }
 
   return user
