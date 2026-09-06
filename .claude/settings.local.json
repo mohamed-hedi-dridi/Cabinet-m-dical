@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "Bash(tee /tmp/build.log)",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(npm config:*)",
+      "Bash(npm_config_cache=\"D:/npm-cache\" npm run build)",
+      "Bash(npm_config_cache=\"D:/npm-cache\" npm run lint)",
+      "Bash(npm_config_cache=\"D:/npm-cache\" npm view @fullcalendar/react versions --json)",
+      "Bash(npm_config_cache=\"D:/npm-cache\" npm view @fullcalendar/core versions --json)",
+      "Bash(npm_config_cache=\"D:/npm-cache\" npm view @fullcalendar/react@6.1.21 peerDependencies --json)",
+      "Bash(npm_config_cache=\"D:/npm-cache\" npm view @fullcalendar/react@7.1.0 peerDependencies --json)",
+      "Bash(npm_config_cache=\"D:/npm-cache\" npm install @fullcalendar/react@^6.1.21)",
+      "Bash(systeminfo)",
+      "Bash(tasklist)",
+      "Bash(sort -k5 -h -r)",
+      "Bash(ls .env*)",
+      "Bash(grep -rin \"test@\\\\|password\\\\|motdepasse\\\\|@cabinet\\\\|exemple.com\\\\|test.com\" PROGRESS.md docs/*.md)"
+    ]
+  }
+}
