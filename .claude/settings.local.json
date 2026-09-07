@@ -16,7 +16,9 @@
       "Bash(tasklist)",
       "Bash(sort -k5 -h -r)",
       "Bash(ls .env*)",
-      "Bash(grep -rin \"test@\\\\|password\\\\|motdepasse\\\\|@cabinet\\\\|exemple.com\\\\|test.com\" PROGRESS.md docs/*.md)"
+      "Bash(grep -rin \"test@\\\\|password\\\\|motdepasse\\\\|@cabinet\\\\|exemple.com\\\\|test.com\" PROGRESS.md docs/*.md)",
+      "Bash(npm run *)",
+      "Bash(npx --no-install playwright --version)"
     ]
   }
 }

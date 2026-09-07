@@ -85,9 +85,12 @@ La sécurité est assurée en premier lieu par les policies RLS de chaque table 
 ## Déploiement (Vercel)
 
 1. Importer le dépôt Git dans [Vercel](https://vercel.com/new).
-2. Renseigner les variables d'environnement du projet (Project Settings → Environment Variables) :
+2. Renseigner les variables d'environnement du projet, pour l'environnement **Production** (Project Settings → Environment Variables) :
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `SUPABASE_SECRET_KEY` (clé secrète, nécessaire au module Utilisateurs — voir `.env.local.example`)
+
+   Sans ces variables, `proxy.ts` (exécuté sur presque toutes les routes) lève une exception à chaque requête et l'application affiche "Internal Server Error" sur tout le site. Un ajout/changement de variable nécessite un redéploiement pour être pris en compte.
 3. Le build Vercel utilise `npm run build` (Next.js standard, aucune configuration additionnelle requise).
 4. S'assurer que les migrations SQL (`supabase/migrations/`) ont bien été appliquées sur le projet Supabase de production **avant** le premier déploiement.
 5. Vérifier dans le dashboard Supabase (Authentication → URL Configuration) que l'URL de production est autorisée comme *Site URL* / *Redirect URL*.
